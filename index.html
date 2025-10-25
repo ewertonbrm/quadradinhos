@@ -41,19 +41,13 @@
         @media (min-width: 1024px) {
             #comicShelf { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
         }
-        /* Estilo adicional para garantir que a imagem do topo se ajuste */
-        .header-image {
-            max-width: 100%;
-            height: auto;
-            margin: 0 auto; /* Centraliza a imagem */
-        }
     </style>
 </head>
 <body class="min-h-screen">
 
     <div id="main-view" class="container mx-auto p-4">
         <header class="text-center py-8 bg-white rounded-lg shadow-md mb-6">
-            <img src="topo.jpg" alt="Minha Estante de Quadrinhos" class="header-image max-h-24 object-contain">
+            <img src="topo.jpg" alt="Minha Estante de Quadrinhos" class="w-full h-auto">
             <p class="text-gray-500 mt-2" style="font-family: 'Inter', sans-serif;">Leitor de arquivos CBZ (ZIP) locais.</p>
         </header>
 
