@@ -356,7 +356,7 @@
          */
         async function loadComicPages(file) {
             currentComic = [];
-            currentPageIndex = 0;
+            // REMOVIDO: currentPageIndex = 0; 
             statusMessage.textContent = `Carregando ${file.name}... Aguarde.`;
 
             const zip = await JSZip.loadAsync(file);
@@ -441,12 +441,18 @@
 
             try {
                 const file = await comicFileHandle.getFile();
+                
+                // CORREÇÃO DE BUG: Zera o índice da página explicitamente ANTES de carregar
+                // para garantir que a leitura sempre comece da capa.
+                currentPageIndex = 0; 
+                
                 await loadComicPages(file);
                 
                 if (currentComic.length > 0) {
                     readerModal.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
-                    updateReaderView(0);
+                    // Chama updateReaderView com o índice já zerado
+                    updateReaderView(currentPageIndex); 
                 } else {
                     console.error('O arquivo não contém páginas de imagem válidas.');
                     statusMessage.textContent = 'Erro: O arquivo não contém páginas de imagem válidas.';
