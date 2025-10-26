@@ -156,15 +156,18 @@
 
         /**
          * Obtém ou define um valor no IndexedDB.
-         * @param {string} method 'get' ou 'put'
+         * @param {string} method 'get' ou 'put' ou 'delete' ou 'getAll'
          * @param {string} key O caminho do arquivo (FileHandle.name)
          * @param {Object} value O objeto de metadados a ser armazenado (inclui o Handle)
          * @returns {Promise<Object>}
          */
         async function operateDB(method, key, value = null) {
             const db = await openDB();
+            // Transação de 'readwrite' é necessária para 'put' e 'delete'
+            const transactionType = (method === 'put' || method === 'delete') ? 'readwrite' : 'readonly';
+
             return new Promise((resolve, reject) => {
-                const transaction = db.transaction([DB_STORE_NAME], method === 'get' ? 'readonly' : 'readwrite');
+                const transaction = db.transaction([DB_STORE_NAME], transactionType);
                 const store = transaction.objectStore(DB_STORE_NAME);
                 let request;
 
@@ -174,6 +177,8 @@
                     request = store.put(value);
                 } else if (method === 'getAll') {
                     request = store.getAll();
+                } else if (method === 'delete') {
+                    request = store.delete(key);
                 } else {
                     return reject("Método DB inválido");
                 }
@@ -197,6 +202,14 @@
          */
         async function saveComicMetadata(metadata) {
             await operateDB('put', metadata.path, metadata);
+        }
+
+        /**
+         * Exclui metadados de um quadrinho do IndexedDB.
+         * @param {string} path O keyPath (nome do arquivo)
+         */
+        async function deleteComicMetadata(path) {
+            await operateDB('delete', path);
         }
 
         /**************************************************
@@ -231,23 +244,30 @@
         /**
          * Lê o conteúdo de uma pasta, encontra arquivos .cbz e extrai capas,
          * salvando o FileHandle e os metadados no IndexedDB.
+         *
+         * CORREÇÃO DE BUG: Implementa a remoção de metadados de revistas
+         * que não existem mais na pasta (Garbage Collection).
+         *
          * @param {FileSystemDirectoryHandle} handle
          */
         async function readFolderAndExtractCovers(handle) {
-            const existingMetadata = (await getComicMetadata()).reduce((acc, meta) => {
+            const existingMetadataList = await getComicMetadata();
+            const existingMetadata = existingMetadataList.reduce((acc, meta) => {
                 acc[meta.path] = meta;
                 return acc;
             }, {});
+            const foundPaths = new Set(); // Para rastrear quais arquivos CBZ foram encontrados na pasta
 
             let comicsFound = 0;
             
             for await (const entry of handle.values()) {
                 if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.cbz')) {
                     const path = entry.name;
+                    foundPaths.add(path); // Adiciona o caminho à lista de encontrados
 
                     // Verifica se o quadrinho já existe com capa, para evitar re-extração
                     if (existingMetadata[path] && existingMetadata[path].coverUrl) {
-                        console.log(`Capa existente para: ${path}`);
+                        // console.log(`Capa existente para: ${path}`);
                         comicsFound++;
                         continue;
                     }
@@ -270,11 +290,31 @@
                 }
             }
             
-            if (comicsFound === 0) {
-                statusMessage.textContent = 'Nenhum arquivo .cbz encontrado na pasta selecionada.';
-            } else {
-                statusMessage.textContent = `Encontrados ${comicsFound} quadrinhos.`;
+            // --- Lógica de Limpeza (Garbage Collection) ---
+            let comicsRemoved = 0;
+            for (const existingPath of Object.keys(existingMetadata)) {
+                if (!foundPaths.has(existingPath)) {
+                    // Se o caminho estava no DB mas não foi encontrado na pasta, exclua
+                    await deleteComicMetadata(existingPath);
+                    comicsRemoved++;
+                }
             }
+
+            // Atualiza a mensagem de status
+            let message = '';
+            if (comicsFound === 0 && existingMetadataList.length === 0) {
+                message = 'Nenhum arquivo .cbz encontrado na pasta selecionada.';
+            } else if (comicsFound > 0) {
+                message = `Estante atualizada: ${comicsFound} quadrinhos encontrados.`;
+                if (comicsRemoved > 0) {
+                    message += ` (${comicsRemoved} removidos)`;
+                }
+            } else if (comicsFound === 0 && existingMetadataList.length > 0) {
+                // Caso a pasta esteja vazia, mas havia dados antigos
+                message = `Nenhum quadrinho encontrado. ${comicsRemoved} itens removidos da estante.`;
+            }
+
+            statusMessage.textContent = message;
         }
 
         /**
@@ -378,7 +418,7 @@
             });
 
             if (metadataList.length > 0) {
-                 statusMessage.textContent = ''; // Limpa a mensagem de status se a estante estiver cheia
+                 // Limpa a mensagem de status se a estante estiver cheia (mantendo as mensagens da varredura)
             }
         }
 
