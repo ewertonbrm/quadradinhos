@@ -53,7 +53,7 @@
         </header>
 
         <div class="flex justify-center mt-4 mb-0">
-            <button id="openFolderBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+            <button id="openFolderBtn" class="bg-[#37A3D4] hover:bg-[#2D8BB2] text-white font-semibold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
                 Abrir Minha Estante de Quadrinhos
             </button>
         </div>
@@ -442,8 +442,8 @@
             try {
                 const file = await comicFileHandle.getFile();
                 
-                // CORREÇÃO DE BUG: Zera o índice da página explicitamente ANTES de carregar
-                // para garantir que a leitura sempre comece da capa.
+                // CORREÇÃO DE BUG: Zera o índice da página explicitamente antes de carregar
+                // para garantir que a leitura sempre comece da capa (Página 0).
                 currentPageIndex = 0; 
                 
                 await loadComicPages(file);
