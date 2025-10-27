@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Quadrinhos CBZ</title>
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJ3ZWJtYW5pZmVzdCBkYXRhIgoJIm5hbWUiOiAiTGVpdG9yIGRlIFF1YWRyaW5ob3MgQ0JaIiwKCSJzaG9ydF9uYW1lIjogIlF1YWRyaW5ob3MiLAoJInN0YXJ0X3VybCI6ICIuLyIsCgkiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKCSJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmN2Y3ZjciLAoJInRoZW1lX2NvbG9yIjogIiMzYjgyZjYiLAoJImljb25zIjogWwogICAgICAgIHsgInNyYyI6ICJpY29uLTE5MngxOTIucG5nIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0sCiAgICAgICAgIHsgInNyYyI6ICJpY29uLTUxMng1MTIucG5nIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0KCQldfQ==">
+    <link rel="manifest" href="manifest.json">
     
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192x192.png">
     
@@ -129,10 +129,6 @@
          * 1. IndexedDB Utilities (Persistência de Metadados e Handles)
          **************************************************/
 
-        /**
-         * Abre a conexão com o IndexedDB.
-         * @returns {Promise<IDBDatabase>}
-         */
         function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -155,16 +151,8 @@
             });
         }
 
-        /**
-         * Obtém ou define um valor no IndexedDB.
-         * @param {string} method 'get' ou 'put' ou 'delete' ou 'getAll'
-         * @param {string} key O caminho do arquivo (FileHandle.name)
-         * @param {Object} value O objeto de metadados a ser armazenado (inclui o Handle)
-         * @returns {Promise<Object>}
-         */
         async function operateDB(method, key, value = null) {
             const db = await openDB();
-            // Transação de 'readwrite' é necessária para 'put' e 'delete'
             const transactionType = (method === 'put' || method === 'delete') ? 'readwrite' : 'readonly';
 
             return new Promise((resolve, reject) => {
@@ -189,26 +177,14 @@
             });
         }
 
-        /**
-         * Obtém todos os metadados de quadrinhos.
-         * @returns {Promise<Array<Object>>}
-         */
         async function getComicMetadata() {
             return await operateDB('getAll');
         }
 
-        /**
-         * Salva metadados de um quadrinho no IndexedDB.
-         * @param {Object} metadata
-         */
         async function saveComicMetadata(metadata) {
             await operateDB('put', metadata.path, metadata);
         }
 
-        /**
-         * Exclui metadados de um quadrinho do IndexedDB.
-         * @param {string} path O keyPath (nome do arquivo)
-         */
         async function deleteComicMetadata(path) {
             await operateDB('delete', path);
         }
@@ -217,10 +193,6 @@
          * 2. Lógica de Arquivos (File System Access API e Descompressão)
          **************************************************/
 
-        /**
-         * Inicia o processo de abertura de uma pasta de quadrinhos.
-         * Usa a File System Access API.
-         */
         async function openComicFolder() {
             if (!window.showDirectoryPicker) {
                 statusMessage.innerHTML = 'Seu navegador não suporta a API de Acesso ao Sistema de Arquivos (File System Access API). Tente usar o Chrome ou Edge mais recente.';
@@ -242,12 +214,6 @@
             }
         }
 
-        /**
-         * Lê o conteúdo de uma pasta, encontra arquivos .cbz e extrai capas,
-         * salvando o FileHandle e os metadados no IndexedDB.
-         *
-         * @param {FileSystemDirectoryHandle} handle
-         */
         async function readFolderAndExtractCovers(handle) {
             const existingMetadataList = await getComicMetadata();
             const existingMetadata = existingMetadataList.reduce((acc, meta) => {
@@ -263,7 +229,6 @@
                     const path = entry.name;
                     foundPaths.add(path); 
 
-                    // Verifica se o quadrinho já existe com capa, para evitar re-extração
                     if (existingMetadata[path] && existingMetadata[path].coverUrl) {
                         comicsFound++;
                         continue;
@@ -287,7 +252,6 @@
                 }
             }
             
-            // --- Lógica de Limpeza (Garbage Collection) ---
             let comicsRemoved = 0;
             for (const existingPath of Object.keys(existingMetadata)) {
                 if (!foundPaths.has(existingPath)) {
@@ -296,7 +260,6 @@
                 }
             }
 
-            // Atualiza a mensagem de status
             let message = '';
             if (comicsFound === 0 && existingMetadataList.length === 0) {
                 message = 'Nenhum arquivo .cbz encontrado na pasta selecionada.';
@@ -312,17 +275,10 @@
             statusMessage.textContent = message;
         }
 
-        /**
-         * Extrai o primeiro arquivo de imagem de um arquivo CBZ (ZIP)
-         * e retorna seu Data URL.
-         * @param {File} file
-         * @returns {Promise<string>} Data URL da capa
-         */
         async function extractCover(file) {
             const zip = await JSZip.loadAsync(file);
             let firstImageFile = null;
 
-            // Encontra a primeira imagem (ou a imagem com o menor índice/ordem alfabética)
             zip.forEach((relativePath, zipEntry) => {
                 if (!zipEntry.dir && /\.(jpe?g|png|gif|webp)$/i.test(relativePath)) {
                     if (!firstImageFile || relativePath.localeCompare(firstImageFile.name) < 0) {
@@ -333,7 +289,6 @@
 
             if (firstImageFile) {
                 const imgBlob = await firstImageFile.entry.async("blob");
-                // Converte Blob para Data URL
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
@@ -345,10 +300,6 @@
             }
         }
 
-        /**
-         * Descompacta todas as páginas do CBZ e as armazena em 'currentComic'.
-         * @param {File} file
-         */
         async function loadComicPages(file) {
             currentComic = [];
             statusMessage.textContent = `Carregando ${file.name}... Aguarde.`;
@@ -362,10 +313,8 @@
                 }
             });
 
-            // Ordena as páginas alfabeticamente (que é a ordem correta do quadrinho)
             imageFiles.sort((a, b) => a.name.localeCompare(b.name));
 
-            // Converte cada imagem para um URL de Objeto para evitar problemas de memória com Data URLs grandes
             for (const { entry } of imageFiles) {
                 const imgBlob = await entry.async("blob");
                 const objectUrl = URL.createObjectURL(imgBlob);
@@ -379,9 +328,6 @@
          * 3. Funções de UI
          **************************************************/
 
-        /**
-         * Renderiza a estante de quadrinhos com base nos metadados no IndexedDB.
-         */
         async function renderShelf() {
             comicShelf.innerHTML = '';
             const metadataList = await getComicMetadata();
@@ -410,10 +356,6 @@
             });
         }
 
-        /**
-         * Abre o modal do leitor e carrega o quadrinho selecionado.
-         * @param {Object} metadata
-         */
         async function openReader(metadata) {
             comicFileHandle = metadata.handle;
             
@@ -447,10 +389,6 @@
             }
         }
 
-        /**
-         * Atualiza a imagem e o contador no leitor.
-         * @param {number} newIndex
-         */
         function updateReaderView(newIndex) {
             if (!currentComic || currentComic.length === 0) return;
 
@@ -514,11 +452,11 @@
             // Arquivos essenciais a serem pré-cacheados (caminhos relativos)
             const urlsToCache = [
                 './', // index.html
+                'manifest.json', // Adicionado o link para o manifest
                 'https://cdn.tailwindcss.com',
                 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
                 'https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap',
                 'topo.jpg', 
-                // ÍCONES DE PWA MINIMOS ADICIONADOS PARA PRÉ-CACHE
                 'icon-192x192.png',
                 'icon-512x512.png'
             ];
@@ -557,7 +495,6 @@
                                     const responseToCache = response.clone();
                                     caches.open(CACHE_NAME)
                                         .then((cache) => {
-                                            // Apenas cacheia se for um request de primeiro nível (não imagens de quadrinhos em blob://)
                                             cache.put(event.request, responseToCache);
                                         });
 
@@ -567,7 +504,7 @@
                         })
                 );
             });
-
+            
             self.addEventListener('activate', (event) => {
                 const cacheWhitelist = [CACHE_NAME];
                 event.waitUntil(
@@ -579,6 +516,9 @@
                                 }
                             })
                         );
+                    }).then(() => {
+                        // CORREÇÃO ESSENCIAL: Garante que o SW controle a página imediatamente
+                        return self.clients.claim(); 
                     })
                 );
             });
