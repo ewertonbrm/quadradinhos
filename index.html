@@ -122,8 +122,10 @@
         // Estado da Estante (para a File System Access API)
         let dirHandle = null; // O Handle do diretório selecionado
         const DB_NAME = 'ComicReaderDB';
-        const DB_STORE_NAME = 'comics';
-        const DB_VERSION = 1;
+        const DB_COMIC_STORE = 'comics';
+        // NOVO: Adicionei um store para o handle do diretório
+        const DB_HANDLE_STORE = 'dirHandleStore'; 
+        const DB_VERSION = 2; // Versão aumentada para forçar o upgrade do DB
 
         /**************************************************
          * 1. IndexedDB Utilities (Persistência de Metadados e Handles)
@@ -131,6 +133,7 @@
 
         function openDB() {
             return new Promise((resolve, reject) => {
+                // Versão aumentada para garantir que o Object Store seja criado
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 
                 request.onerror = (event) => {
@@ -140,8 +143,12 @@
 
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
-                        db.createObjectStore(DB_STORE_NAME, { keyPath: 'path' });
+                    if (!db.objectStoreNames.contains(DB_COMIC_STORE)) {
+                        db.createObjectStore(DB_COMIC_STORE, { keyPath: 'path' });
+                    }
+                    // NOVO: Cria o store para o handle do diretório
+                    if (!db.objectStoreNames.contains(DB_HANDLE_STORE)) {
+                        db.createObjectStore(DB_HANDLE_STORE, { keyPath: 'id' });
                     }
                 };
 
@@ -151,13 +158,16 @@
             });
         }
 
+        /**
+         * Obtém ou define um valor no IndexedDB (para o store de quadrinhos).
+         */
         async function operateDB(method, key, value = null) {
             const db = await openDB();
             const transactionType = (method === 'put' || method === 'delete') ? 'readwrite' : 'readonly';
 
             return new Promise((resolve, reject) => {
-                const transaction = db.transaction([DB_STORE_NAME], transactionType);
-                const store = db.objectStore(DB_STORE_NAME);
+                const transaction = db.transaction([DB_COMIC_STORE], transactionType);
+                const store = transaction.objectStore(DB_COMIC_STORE);
                 let request;
 
                 if (method === 'get') {
@@ -176,6 +186,34 @@
                 request.onerror = (event) => reject(event.target.error);
             });
         }
+        
+        // NOVO: Função para salvar o handle do diretório principal
+        async function saveDirHandle(handle) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([DB_HANDLE_STORE], 'readwrite');
+                const store = transaction.objectStore(DB_HANDLE_STORE);
+                // Armazena com uma chave fixa 'main'
+                const request = store.put({ id: 'main', handle: handle });
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        // NOVO: Função para obter o handle do diretório principal
+        async function getDirHandle() {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([DB_HANDLE_STORE], 'readonly');
+                const store = transaction.objectStore(DB_HANDLE_STORE);
+                const request = store.get('main');
+
+                request.onsuccess = () => resolve(request.result ? request.result.handle : null);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
 
         async function getComicMetadata() {
             return await operateDB('getAll');
@@ -202,6 +240,10 @@
             try {
                 dirHandle = await window.showDirectoryPicker();
                 statusMessage.textContent = `Buscando arquivos CBZ em: ${dirHandle.name}...`;
+                
+                // NOVO: Salva o handle do diretório principal
+                await saveDirHandle(dirHandle);
+
                 await readFolderAndExtractCovers(dirHandle);
                 renderShelf();
             } catch (error) {
@@ -214,8 +256,36 @@
             }
         }
 
+        /**
+         * NOVO: Tenta revalidar a permissão para o handle atual, se necessário.
+         * @param {FileSystemHandle} handle O handle do arquivo ou diretório a ser verificado.
+         * @returns {boolean} True se a permissão foi concedida.
+         */
+        async function checkAndRequestPermission(handle) {
+            const options = { mode: 'read' };
+            let permission = await handle.queryPermission(options);
+            
+            if (permission === 'granted') {
+                return true;
+            }
+
+            if (permission === 'prompt') {
+                permission = await handle.requestPermission(options);
+            }
+            
+            return permission === 'granted';
+        }
+
         async function readFolderAndExtractCovers(handle) {
+            // NOVO: Verifica e solicita permissão para o diretório principal
+            const hasPermission = await checkAndRequestPermission(handle);
+            if (!hasPermission) {
+                statusMessage.textContent = `Permissão negada para acessar a pasta: ${handle.name}. Clique para reabrir.`;
+                return;
+            }
+
             const existingMetadataList = await getComicMetadata();
+            // ... (Restante da lógica de leitura e extração de capa permanece a mesma)
             const existingMetadata = existingMetadataList.reduce((acc, meta) => {
                 acc[meta.path] = meta;
                 return acc;
@@ -235,12 +305,15 @@
                     }
 
                     try {
+                        // Ao usar entry.getFile(), a permissão do diretório pai geralmente basta.
                         const file = await entry.getFile();
                         const coverUrl = await extractCover(file);
                         
                         const metadata = {
                             path: path,
                             name: file.name.replace(/\.cbz$/i, ''),
+                            // NOTA: entry é o FileSystemFileHandle, que também precisa de permissão, 
+                            // mas a permissão do diretório pai (handle) facilita.
                             handle: entry,
                             coverUrl: coverUrl,
                         };
@@ -335,6 +408,10 @@
             if (metadataList.length === 0 && dirHandle) {
                  statusMessage.textContent = `Nenhum arquivo .cbz encontrado em ${dirHandle.name}.`;
                  return;
+            } else if (metadataList.length === 0) {
+                // Se não há handles salvos, restaura a mensagem inicial
+                statusMessage.textContent = 'Clique no botão acima para selecionar a pasta que contém seus arquivos .cbz (ZIP).';
+                return;
             }
 
             metadataList.forEach(metadata => {
@@ -354,21 +431,26 @@
                 card.addEventListener('click', () => openReader(metadata));
                 comicShelf.appendChild(card);
             });
+            
+             // Se houver metadados, mas não houver handle ativo, solicita reabertura
+            if (metadataList.length > 0 && !dirHandle) {
+                statusMessage.textContent = `Estante salva com ${metadataList.length} quadrinhos. Clique em "Abrir Minha Estante" para revalidar o acesso à pasta.`;
+            }
         }
 
         async function openReader(metadata) {
             comicFileHandle = metadata.handle;
             
-            const permission = await comicFileHandle.queryPermission({ mode: 'read' });
-            if (permission !== 'granted') {
-                const newPermission = await comicFileHandle.requestPermission({ mode: 'read' });
-                if (newPermission !== 'granted') {
-                    statusMessage.textContent = 'Permissão de leitura negada pelo usuário.';
-                    return;
-                }
+            // NOVO: A permissão é verificada na função dedicada
+            const hasPermission = await checkAndRequestPermission(comicFileHandle);
+
+            if (!hasPermission) {
+                statusMessage.textContent = 'Permissão de leitura negada pelo usuário. Tente clicar em "Abrir Minha Estante" e reautorizar a pasta.';
+                return;
             }
 
             try {
+                // Se a permissão foi concedida, prossegue
                 const file = await comicFileHandle.getFile();
                 
                 currentPageIndex = 0; 
@@ -446,13 +528,11 @@
 
         // ----------------- PWA Service Worker Registration -----------------
         
-        // O Service Worker está configurado para o escopo raiz e armazena os ativos em cache.
         const swCode = `
             const CACHE_NAME = 'quadrinhos-cache-v1';
-            // Arquivos essenciais a serem pré-cacheados (caminhos relativos)
             const urlsToCache = [
-                './', // index.html
-                'manifest.json', // Adicionado o link para o manifest
+                './', 
+                'manifest.json', 
                 'https://cdn.tailwindcss.com',
                 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
                 'https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap',
@@ -474,7 +554,6 @@
             });
 
             self.addEventListener('fetch', (event) => {
-                // Não tente cachear ou interceptar solicitações de File System Access API (blob://)
                 if (event.request.url.startsWith('blob:') || event.request.url.startsWith('data:')) {
                     return;
                 }
@@ -517,7 +596,6 @@
                             })
                         );
                     }).then(() => {
-                        // CORREÇÃO ESSENCIAL: Garante que o SW controle a página imediatamente
                         return self.clients.claim(); 
                     })
                 );
@@ -541,15 +619,27 @@
         // ----------------- Inicialização -----------------
 
         /**
-         * Inicializa o aplicativo: tenta carregar a estante de metadados.
+         * Inicializa o aplicativo: tenta carregar o handle e a estante de metadados.
          */
         async function initApp() {
-            // Configuração Firebase omitida conforme instrução.
+            // 1. Tenta carregar o handle do diretório principal
+            dirHandle = await getDirHandle();
             
-            // Renderiza a estante se houver metadados salvos
+            // 2. Se houver um handle salvo, verifica se a permissão é válida
+            if (dirHandle) {
+                const hasPermission = await checkAndRequestPermission(dirHandle);
+                
+                if (hasPermission) {
+                    statusMessage.textContent = `Acesso à pasta '${dirHandle.name}' revalidado.`;
+                } else {
+                    // Se o navegador perdeu a permissão, limpa o handle
+                    dirHandle = null;
+                }
+            }
+            
+            // 3. Renderiza a estante
             const metadataList = await getComicMetadata();
             if (metadataList.length > 0) {
-                statusMessage.textContent = `Carregando estante com ${metadataList.length} quadrinhos salvos...`;
                 renderShelf();
             }
         }
