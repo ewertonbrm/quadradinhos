@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Quadrinhos CBZ</title>
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJ3ZWJtYW5pZmVzdCBkYXRhIgoJIm5hbWUiOiAiTGVpdG9yIGRlIFF1YWRyaW5ob3MgQ0JaIiwKCSJzaG9ydF9uYW1lIjogIlF1YWRyaW5ob3MiLAoJInN0YXJ0X3VybCI6ICIuLyIsCgkiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKCSJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmN2Y3ZjciLAoJInRoZW1lX2NvbG9yIjogIiMzYjgyZjYiLAoJImljb25zIjogWwogICAgICAgIHsgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFwibXZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjM2I4MmY2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcgY2xhc3M9J2x1Y2lkZSBsdWNpZGUtYm9vay1vcGVuJz48cGF0aCBkPSdNMjggNmg0YTEuMiAxLjIgMCAwIDQgNHYxNGEwLjkgMC45IDAgMCAwLTEgLTFIOC43ek0yIDZoLTRhMS4yIDEuMiAwIDAgLTEgLTQgNFYyMGEwLjkgMC45IDAgMCAxIDEtMS41ejInLz48L3N2Zz5cIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn0sCgkJeyAKCSAgICAgICAgICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFwibXZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjM2I4MmY2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcgY2xhc3M9J2x1Y2lkZSBsdWNpZGUtYm9vay1vcGVuJz48cGF0aCBkPSdNMjggNmg0YTEuMiAxLjIgMCAwIDQgNHYxNGEwLjkgMC45IDAgMCAwLTEgLTFIOC43ek0yIDZoLTRhMS4yIDEuMiAwIDAgLTEgLTQgNFYyMGEwLjkgMC45IDAgMCAxIDEtMS41ejInLz48L3N2Zz5cIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn0KCQldfQ==">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        /* Importação da fonte Oswald e Inter */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Oswald:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
         
-        /* Aplicação da fonte Oswald no corpo da página */
         body { font-family: 'Oswald', sans-serif; background-color: #f7f7f7; }
         .comic-card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -32,7 +32,6 @@
         #comicShelf {
             display: grid;
             gap: 1.5rem;
-            /* Remove o padding superior e mantém o lateral/inferior */
             padding: 0 1.5rem 1.5rem 1.5rem;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         }
@@ -47,13 +46,13 @@
 <body class="min-h-screen">
 
     <div id="main-view" class="container mx-auto px-4 pt-0">
-        <header class="text-center py-8 bg-white rounded-lg shadow-md">
-            <img src="topo.jpg" alt="Minha Estante de Quadrinhos" class="w-full h-auto">
+        <header class="text-center py-8 bg-white rounded-lg shadow-md mb-6">
+            <img src="topo.jpg" alt="Minha Estante de Quadrinhos" class="w-full h-auto rounded-t-lg">
             <p class="text-gray-500 mt-2">Leitor de arquivos CBZ (ZIP) locais.</p>
         </header>
 
-        <div class="flex justify-center mt-4 mb-0">
-            <button id="openFolderBtn" class="bg-[#37A3D4] hover:bg-[#2D8BB2] text-white font-semibold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+        <div class="flex justify-center mt-6 mb-4">
+            <button id="openFolderBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
                 Abrir Minha Estante de Quadrinhos
             </button>
         </div>
@@ -168,7 +167,7 @@
 
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction([DB_STORE_NAME], transactionType);
-                const store = transaction.objectStore(DB_STORE_NAME);
+                const store = db.objectStore(DB_STORE_NAME);
                 let request;
 
                 if (method === 'get') {
@@ -245,9 +244,6 @@
          * Lê o conteúdo de uma pasta, encontra arquivos .cbz e extrai capas,
          * salvando o FileHandle e os metadados no IndexedDB.
          *
-         * CORREÇÃO DE BUG: Implementa a remoção de metadados de revistas
-         * que não existem mais na pasta (Garbage Collection).
-         *
          * @param {FileSystemDirectoryHandle} handle
          */
         async function readFolderAndExtractCovers(handle) {
@@ -256,18 +252,17 @@
                 acc[meta.path] = meta;
                 return acc;
             }, {});
-            const foundPaths = new Set(); // Para rastrear quais arquivos CBZ foram encontrados na pasta
+            const foundPaths = new Set(); 
 
             let comicsFound = 0;
             
             for await (const entry of handle.values()) {
                 if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.cbz')) {
                     const path = entry.name;
-                    foundPaths.add(path); // Adiciona o caminho à lista de encontrados
+                    foundPaths.add(path); 
 
                     // Verifica se o quadrinho já existe com capa, para evitar re-extração
                     if (existingMetadata[path] && existingMetadata[path].coverUrl) {
-                        // console.log(`Capa existente para: ${path}`);
                         comicsFound++;
                         continue;
                     }
@@ -294,7 +289,6 @@
             let comicsRemoved = 0;
             for (const existingPath of Object.keys(existingMetadata)) {
                 if (!foundPaths.has(existingPath)) {
-                    // Se o caminho estava no DB mas não foi encontrado na pasta, exclua
                     await deleteComicMetadata(existingPath);
                     comicsRemoved++;
                 }
@@ -310,7 +304,6 @@
                     message += ` (${comicsRemoved} removidos)`;
                 }
             } else if (comicsFound === 0 && existingMetadataList.length > 0) {
-                // Caso a pasta esteja vazia, mas havia dados antigos
                 message = `Nenhum quadrinho encontrado. ${comicsRemoved} itens removidos da estante.`;
             }
 
@@ -356,7 +349,6 @@
          */
         async function loadComicPages(file) {
             currentComic = [];
-            // REMOVIDO: currentPageIndex = 0; 
             statusMessage.textContent = `Carregando ${file.name}... Aguarde.`;
 
             const zip = await JSZip.loadAsync(file);
@@ -402,7 +394,6 @@
                 card.className = 'comic-card bg-white rounded-lg shadow-lg overflow-hidden flex flex-col justify-end';
                 card.dataset.path = metadata.path;
 
-                // REMOVIDA A TAG <p> QUE EXIBIA metadata.name
                 card.innerHTML = `
                     <div class="flex-grow flex items-center justify-center p-2">
                         <img src="${metadata.coverUrl || 'https://placehold.co/300x450/cccccc/333333?text=Sem+Capa'}" 
@@ -412,14 +403,9 @@
                     </div>
                 `;
                 
-                // Adiciona o evento de clique para abrir o leitor
                 card.addEventListener('click', () => openReader(metadata));
                 comicShelf.appendChild(card);
             });
-
-            if (metadataList.length > 0) {
-                 // Limpa a mensagem de status se a estante estiver cheia (mantendo as mensagens da varredura)
-            }
         }
 
         /**
@@ -429,7 +415,6 @@
         async function openReader(metadata) {
             comicFileHandle = metadata.handle;
             
-            // Revalida a permissão (necessário após fechar o navegador)
             const permission = await comicFileHandle.queryPermission({ mode: 'read' });
             if (permission !== 'granted') {
                 const newPermission = await comicFileHandle.requestPermission({ mode: 'read' });
@@ -442,8 +427,6 @@
             try {
                 const file = await comicFileHandle.getFile();
                 
-                // CORREÇÃO DE BUG: Zera o índice da página explicitamente antes de carregar
-                // para garantir que a leitura sempre comece da capa (Página 0).
                 currentPageIndex = 0; 
                 
                 await loadComicPages(file);
@@ -451,7 +434,6 @@
                 if (currentComic.length > 0) {
                     readerModal.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
-                    // Chama updateReaderView com o índice já zerado
                     updateReaderView(currentPageIndex); 
                 } else {
                     console.error('O arquivo não contém páginas de imagem válidas.');
@@ -472,11 +454,9 @@
 
             currentPageIndex = Math.min(Math.max(0, newIndex), currentComic.length - 1);
 
-            // Carrega a nova página
             comicPage.src = currentComic[currentPageIndex];
             pageCounter.textContent = `Página ${currentPageIndex + 1} / ${currentComic.length}`;
             
-            // Pré-carrega a próxima página (se houver)
             if (currentPageIndex + 1 < currentComic.length) {
                 const nextUrl = currentComic[currentPageIndex + 1];
                 const img = new Image();
@@ -497,17 +477,14 @@
             readerModal.classList.add('hidden');
             document.body.classList.remove('overflow-hidden');
             
-            // Libera a memória de todas as páginas ao fechar o leitor
             if (currentComic) {
                 currentComic.forEach(url => URL.revokeObjectURL(url));
                 currentComic = null;
             }
         });
 
-        // Navegação por Botões (Top Bar)
+        // Navegação por Botões
         nextPageBtn.addEventListener('click', () => updateReaderView(currentPageIndex + 1));
-
-        // Navegação por Botões (Mobile Footer)
         prevPageBtn.addEventListener('click', () => updateReaderView(currentPageIndex - 1));
         nextPageBtnMobile.addEventListener('click', () => updateReaderView(currentPageIndex + 1));
         
@@ -526,6 +503,103 @@
                 closeReaderBtn.click();
             }
         });
+
+        // ----------------- PWA Service Worker Registration -----------------
+        
+        // O Service Worker está configurado para o escopo raiz e armazena os ativos em cache.
+        const swCode = `
+            const CACHE_NAME = 'quadrinhos-cache-v1';
+            // Arquivos essenciais a serem pré-cacheados (inclui topo.jpg com caminho corrigido)
+            const urlsToCache = [
+                './', // index.html
+                'https://cdn.tailwindcss.com',
+                'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+                'https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap',
+                // CORRIGIDO: O cache do Service Worker também deve ser corrigido para o novo caminho relativo
+                'topo.jpg' 
+            ];
+
+            self.addEventListener('install', (event) => {
+                event.waitUntil(
+                    caches.open(CACHE_NAME)
+                        .then((cache) => {
+                            return cache.addAll(urlsToCache).catch(err => {
+                                console.error('Falha ao pré-cachear alguns ativos:', err);
+                            });
+                        })
+                );
+                self.skipWaiting();
+            });
+
+            self.addEventListener('fetch', (event) => {
+                // Não tente cachear ou interceptar solicitações de File System Access API (blob://)
+                if (event.request.url.startsWith('blob:') || event.request.url.startsWith('data:')) {
+                    return;
+                }
+                
+                event.respondWith(
+                    caches.match(event.request)
+                        .then((response) => {
+                            if (response) {
+                                return response;
+                            }
+                            
+                            return fetch(event.request).then(
+                                (response) => {
+                                    if(!response || response.status !== 200) {
+                                        return response;
+                                    }
+
+                                    const responseToCache = response.clone();
+                                    caches.open(CACHE_NAME)
+                                        .then((cache) => {
+                                            // Verifica se o caminho absoluto do GitHub Pages foi usado
+                                            // Se o asset for buscado como /quadradinhos/topo.jpg, ele não será cacheado
+                                            // Se for buscado como topo.jpg (caminho relativo), a URL será correta
+                                            const urlToCache = new URL(event.request.url);
+                                            // Se estiver no GitHub Pages, o caminho correto é aquele sem o nome do repo
+                                            // Se o usuário acessar o site em seu domínio, o Service Worker fará o cache normalmente
+                                            if (urlToCache.pathname.endsWith('/topo.jpg')) {
+                                                cache.put(event.request, responseToCache);
+                                            }
+                                        });
+
+                                    return response;
+                                }
+                            );
+                        })
+                );
+            });
+
+            self.addEventListener('activate', (event) => {
+                const cacheWhitelist = [CACHE_NAME];
+                event.waitUntil(
+                    caches.keys().then((cacheNames) => {
+                        return Promise.all(
+                            cacheNames.map((cacheName) => {
+                                if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                    return caches.delete(cacheName);
+                                }
+                            })
+                        );
+                    })
+                );
+            });
+        `;
+        
+        if ('serviceWorker' in navigator) {
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+            
+            navigator.serviceWorker.register(swUrl)
+                .then(reg => {
+                    console.log('Service Worker registrado com sucesso. Escopo:', reg.scope);
+                })
+                .catch(error => {
+                    console.error('Falha no registro do Service Worker:', error);
+                });
+        }
+
 
         // ----------------- Inicialização -----------------
 
