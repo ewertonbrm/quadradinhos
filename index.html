@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Quadrinhos CBZ</title>
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJ3ZWJtYW5pZmVzdCBkYXRhIgoJIm5hbWUiOiAiTGVpdG9yIGRlIFF1YWRyaW5ob3MgQ0JaIiwKCSJzaG9ydF9uYW1lIjogIlF1YWRyaW5ob3MiLAoJInN0YXJ0X3VybCI6ICIuLyIsCgkiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKCSJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmN2Y3ZjciLAoJInRoZW1lX2NvbG9yIjogIiMzYjgyZjYiLAoJImljb25zIjogWwogICAgICAgIHsgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFwibXZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjM2I4MmY2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcgY2xhc3M9J2x1Y2lkZSBsdWNpZGUtYm9vay1vcGVuJz48cGF0aCBkPSdNMjggNmg0YTEuMiAxLjIgMCAwIDQgNHYxNGEwLjkgMC45IDAgMCAwLTEgLTFIOC43ek0yIDZoLTRhMS4yIDEuMiAwIDAgLTEgLTQgNFYyMGEwLjkgMC45IDAgMCAxIDEtMS41ejInLz48L3N2Zz5cIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn0sCgkJeyAKCSAgICAgICAgICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFwibXZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjM2I4MmY2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcgY2xhc3M9J2x1Y2lkZSBsdWNpZGUtYm9vay1vcGVuJz48cGF0aCBkPSdNMjggNmg0YTEuMiAxLjIgMCAwIDQgNHYxNGEwLjkgMC45IDAgMCAwLTEgLTFIOC43ek0yIDZoLTRhMS4yIDEuMiAwIDAgLTEgLTQgNFYyMGEwLjkgMC45IDAgMCAxIDEtMS41ejInLz48L3N2Zz5cIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn0KCQldfQ==">
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJ3ZWJtYW5pZmVzdCBkYXRhIgoJIm5hbWUiOiAiTGVpdG9yIGRlIFF1YWRyaW5ob3MgQ0JaIiwKCSJzaG9ydF9uYW1lIjogIlF1YWRyaW5ob3MiLAoJInN0YXJ0X3VybCI6ICIuLyIsCgkiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKCSJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmN2Y3ZjciLAoJInRoZW1lX2NvbG9yIjogIiMzYjgyZjYiLAoJImljb25zIjogWwogICAgICAgIHsgInNyYyI6ICJpY29uLTE5MngxOTIucG5nIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0sCiAgICAgICAgIHsgInNyYyI6ICJpY29uLTUxMng1MTIucG5nIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0KCQldfQ==">
+    
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192x192.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -509,14 +511,16 @@
         // O Service Worker está configurado para o escopo raiz e armazena os ativos em cache.
         const swCode = `
             const CACHE_NAME = 'quadrinhos-cache-v1';
-            // Arquivos essenciais a serem pré-cacheados (inclui topo.jpg com caminho corrigido)
+            // Arquivos essenciais a serem pré-cacheados (caminhos relativos)
             const urlsToCache = [
                 './', // index.html
                 'https://cdn.tailwindcss.com',
                 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
                 'https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap',
-                // CORRIGIDO: O cache do Service Worker também deve ser corrigido para o novo caminho relativo
-                'topo.jpg' 
+                'topo.jpg', 
+                // ÍCONES DE PWA MINIMOS ADICIONADOS PARA PRÉ-CACHE
+                'icon-192x192.png',
+                'icon-512x512.png'
             ];
 
             self.addEventListener('install', (event) => {
@@ -553,15 +557,8 @@
                                     const responseToCache = response.clone();
                                     caches.open(CACHE_NAME)
                                         .then((cache) => {
-                                            // Verifica se o caminho absoluto do GitHub Pages foi usado
-                                            // Se o asset for buscado como /quadradinhos/topo.jpg, ele não será cacheado
-                                            // Se for buscado como topo.jpg (caminho relativo), a URL será correta
-                                            const urlToCache = new URL(event.request.url);
-                                            // Se estiver no GitHub Pages, o caminho correto é aquele sem o nome do repo
-                                            // Se o usuário acessar o site em seu domínio, o Service Worker fará o cache normalmente
-                                            if (urlToCache.pathname.endsWith('/topo.jpg')) {
-                                                cache.put(event.request, responseToCache);
-                                            }
+                                            // Apenas cacheia se for um request de primeiro nível (não imagens de quadrinhos em blob://)
+                                            cache.put(event.request, responseToCache);
                                         });
 
                                     return response;
