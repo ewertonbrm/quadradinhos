@@ -1,0 +1,22 @@
+{
+    "name": "Quadradinhos",
+    "short_name": "Quadradinhos",
+    "description": "Leitura de revistas em quadrinhos.",
+    "start_url": "/quadradinhos/index.html",
+    "display": "standalone",
+    "background_color": "#FFFFFF",
+    "theme_color": "#FFFFFF",
+    "icons": [
+        {
+            "src": "/quadradinhos/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/quadradinhos/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+
+}
