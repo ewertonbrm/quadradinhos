@@ -1,10 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Quadrinhos CBZ</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Quadradinhos">
+    <meta name="theme-color" content="#37A3D4"> 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -546,6 +551,23 @@
 
         initApp();
 
+    </script>
+    
+    <script>
+        // ----------------- Registro do Service Worker -----------------
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // O escopo deve ser a raiz do repositório ("/quadradinhos/") 
+                // para que o Service Worker possa controlar a aplicação inteira no GitHub Pages.
+                navigator.serviceWorker.register('./service-worker.js', { scope: '/quadradinhos/' })
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso:', registration);
+                    })
+                    .catch(error => {
+                        console.error('Falha no registro do Service Worker:', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
