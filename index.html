@@ -1,1 +1,551 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de Quadrinhos CBZ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* Importação da fonte Oswald e Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Oswald:wght@400;600;700&display=swap');
+        
+        /* Aplicação da fonte Oswald no corpo da página */
+        body { font-family: 'Oswald', sans-serif; background-color: #f7f7f7; }
+        .comic-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            aspect-ratio: 2/3; /* Proporção típica de um quadrinho */
+        }
+        .comic-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .reader-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            cursor: pointer; /* Permite clique para avançar/voltar */
+        }
+        /* Estilo para a estante de livros (grid responsivo) */
+        #comicShelf {
+            display: grid;
+            gap: 1.5rem;
+            /* Remove o padding superior e mantém o lateral/inferior */
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        }
+        @media (min-width: 640px) {
+            #comicShelf { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+        }
+        @media (min-width: 1024px) {
+            #comicShelf { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="main-view" class="container mx-auto px-4 pt-0">
+        <header class="text-center py-8 bg-white rounded-lg shadow-md">
+            <img src="topo.jpg" alt="Minha Estante de Quadrinhos" class="w-full h-auto">
+            <p class="text-gray-500 mt-2">Leitor de arquivos CBZ (ZIP) locais.</p>
+        </header>
+
+        <div class="flex justify-center mt-4 mb-0">
+            <button id="openFolderBtn" class="bg-[#37A3D4] hover:bg-[#2D8BB2] text-white font-semibold py-3 px-6 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                Abrir Minha Estante de Quadrinhos
+            </button>
+        </div>
+
+        <div id="statusMessage" class="text-center text-gray-600 mt-4">
+            Clique no botão acima para selecionar a pasta que contém seus arquivos .cbz (ZIP).
+        </div>
+
+        <div id="comicShelf">
+            </div>
+    </div>
+
+    <div id="reader-modal" class="fixed inset-0 bg-gray-900 bg-opacity-95 hidden z-50 p-2 md:p-8 overflow-y-auto">
+        <div class="max-w-4xl mx-auto flex flex-col h-full">
+            <div class="flex justify-between items-center mb-4 sticky top-0 bg-gray-900 py-2 rounded-lg">
+                <button id="closeReaderBtn" class="text-white bg-red-600 hover:bg-red-700 p-2 rounded-full shadow-lg transition" title="Fechar Leitor">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+                <span id="pageCounter" class="text-white text-lg font-semibold">Página 1 / 1</span>
+                <button id="nextPageBtn" class="text-white bg-indigo-600 hover:bg-indigo-700 p-2 rounded-full shadow-lg transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            </div>
+
+            <div id="readerArea" class="flex-grow flex items-center justify-center bg-black rounded-xl overflow-hidden shadow-2xl p-2"
+                style="min-height: 80vh;"
+                role="region" aria-label="Página de Quadrinhos">
+                <img id="comicPage" class="reader-image" alt="Página de Quadrinhos Atual">
+            </div>
+
+            <div class="flex justify-center items-center gap-4 mt-4">
+                <button id="prevPageBtnMobile" class="text-white bg-indigo-600 hover:bg-indigo-700 p-3 rounded-full shadow-lg transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button id="nextPageBtnMobile" class="text-white bg-indigo-600 hover:bg-indigo-700 p-3 rounded-full shadow-lg transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Variáveis globais obrigatórias (mantenha a estrutura, mesmo que não usadas no core da lógica de arquivo local)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Variáveis do DOM
+        const openFolderBtn = document.getElementById('openFolderBtn');
+        const comicShelf = document.getElementById('comicShelf');
+        const statusMessage = document.getElementById('statusMessage');
+        const readerModal = document.getElementById('reader-modal');
+        const closeReaderBtn = document.getElementById('closeReaderBtn');
+        const comicPage = document.getElementById('comicPage');
+        const pageCounter = document.getElementById('pageCounter');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const prevPageBtn = document.getElementById('prevPageBtnMobile');
+        const nextPageBtnMobile = document.getElementById('nextPageBtnMobile');
+        
+        // Estado do Leitor
+        let currentComic = null; // Armazena a lista de Data URLs das páginas
+        let currentPageIndex = 0;
+        let comicFileHandle = null; // Armazena o FileSystemFileHandle da revista sendo lida
+
+        // Estado da Estante (para a File System Access API)
+        let dirHandle = null; // O Handle do diretório selecionado
+        const DB_NAME = 'ComicReaderDB';
+        const DB_STORE_NAME = 'comics';
+        const DB_VERSION = 1;
+
+        /**************************************************
+         * 1. IndexedDB Utilities (Persistência de Metadados e Handles)
+         **************************************************/
+
+        /**
+         * Abre a conexão com o IndexedDB.
+         * @returns {Promise<IDBDatabase>}
+         */
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = (event) => {
+                    console.error("Erro ao abrir IndexedDB:", event.target.error);
+                    reject(event.target.error);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
+                        db.createObjectStore(DB_STORE_NAME, { keyPath: 'path' });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    resolve(event.target.result);
+                };
+            });
+        }
+
+        /**
+         * Obtém ou define um valor no IndexedDB.
+         * @param {string} method 'get' ou 'put' ou 'delete' ou 'getAll'
+         * @param {string} key O caminho do arquivo (FileHandle.name)
+         * @param {Object} value O objeto de metadados a ser armazenado (inclui o Handle)
+         * @returns {Promise<Object>}
+         */
+        async function operateDB(method, key, value = null) {
+            const db = await openDB();
+            // Transação de 'readwrite' é necessária para 'put' e 'delete'
+            const transactionType = (method === 'put' || method === 'delete') ? 'readwrite' : 'readonly';
+
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([DB_STORE_NAME], transactionType);
+                const store = transaction.objectStore(DB_STORE_NAME);
+                let request;
+
+                if (method === 'get') {
+                    request = store.get(key);
+                } else if (method === 'put') {
+                    request = store.put(value);
+                } else if (method === 'getAll') {
+                    request = store.getAll();
+                } else if (method === 'delete') {
+                    request = store.delete(key);
+                } else {
+                    return reject("Método DB inválido");
+                }
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Obtém todos os metadados de quadrinhos.
+         * @returns {Promise<Array<Object>>}
+         */
+        async function getComicMetadata() {
+            return await operateDB('getAll');
+        }
+
+        /**
+         * Salva metadados de um quadrinho no IndexedDB.
+         * @param {Object} metadata
+         */
+        async function saveComicMetadata(metadata) {
+            await operateDB('put', metadata.path, metadata);
+        }
+
+        /**
+         * Exclui metadados de um quadrinho do IndexedDB.
+         * @param {string} path O keyPath (nome do arquivo)
+         */
+        async function deleteComicMetadata(path) {
+            await operateDB('delete', path);
+        }
+
+        /**************************************************
+         * 2. Lógica de Arquivos (File System Access API e Descompressão)
+         **************************************************/
+
+        /**
+         * Inicia o processo de abertura de uma pasta de quadrinhos.
+         * Usa a File System Access API.
+         */
+        async function openComicFolder() {
+            if (!window.showDirectoryPicker) {
+                statusMessage.innerHTML = 'Seu navegador não suporta a API de Acesso ao Sistema de Arquivos (File System Access API). Tente usar o Chrome ou Edge mais recente.';
+                return;
+            }
+
+            try {
+                dirHandle = await window.showDirectoryPicker();
+                statusMessage.textContent = `Buscando arquivos CBZ em: ${dirHandle.name}...`;
+                await readFolderAndExtractCovers(dirHandle);
+                renderShelf();
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    statusMessage.textContent = 'Seleção de pasta cancelada. Clique no botão para tentar novamente.';
+                } else {
+                    statusMessage.textContent = 'Erro ao acessar o diretório. Verifique as permissões.';
+                    console.error("Erro ao abrir pasta:", error);
+                }
+            }
+        }
+
+        /**
+         * Lê o conteúdo de uma pasta, encontra arquivos .cbz e extrai capas,
+         * salvando o FileHandle e os metadados no IndexedDB.
+         *
+         * CORREÇÃO DE BUG: Implementa a remoção de metadados de revistas
+         * que não existem mais na pasta (Garbage Collection).
+         *
+         * @param {FileSystemDirectoryHandle} handle
+         */
+        async function readFolderAndExtractCovers(handle) {
+            const existingMetadataList = await getComicMetadata();
+            const existingMetadata = existingMetadataList.reduce((acc, meta) => {
+                acc[meta.path] = meta;
+                return acc;
+            }, {});
+            const foundPaths = new Set(); // Para rastrear quais arquivos CBZ foram encontrados na pasta
+
+            let comicsFound = 0;
+            
+            for await (const entry of handle.values()) {
+                if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.cbz')) {
+                    const path = entry.name;
+                    foundPaths.add(path); // Adiciona o caminho à lista de encontrados
+
+                    // Verifica se o quadrinho já existe com capa, para evitar re-extração
+                    if (existingMetadata[path] && existingMetadata[path].coverUrl) {
+                        // console.log(`Capa existente para: ${path}`);
+                        comicsFound++;
+                        continue;
+                    }
+
+                    try {
+                        const file = await entry.getFile();
+                        const coverUrl = await extractCover(file);
+                        
+                        const metadata = {
+                            path: path,
+                            name: file.name.replace(/\.cbz$/i, ''),
+                            handle: entry,
+                            coverUrl: coverUrl,
+                        };
+                        await saveComicMetadata(metadata);
+                        comicsFound++;
+                    } catch (e) {
+                        console.error(`Erro ao processar ${entry.name}:`, e);
+                    }
+                }
+            }
+            
+            // --- Lógica de Limpeza (Garbage Collection) ---
+            let comicsRemoved = 0;
+            for (const existingPath of Object.keys(existingMetadata)) {
+                if (!foundPaths.has(existingPath)) {
+                    // Se o caminho estava no DB mas não foi encontrado na pasta, exclua
+                    await deleteComicMetadata(existingPath);
+                    comicsRemoved++;
+                }
+            }
+
+            // Atualiza a mensagem de status
+            let message = '';
+            if (comicsFound === 0 && existingMetadataList.length === 0) {
+                message = 'Nenhum arquivo .cbz encontrado na pasta selecionada.';
+            } else if (comicsFound > 0) {
+                message = `Estante atualizada: ${comicsFound} quadrinhos encontrados.`;
+                if (comicsRemoved > 0) {
+                    message += ` (${comicsRemoved} removidos)`;
+                }
+            } else if (comicsFound === 0 && existingMetadataList.length > 0) {
+                // Caso a pasta esteja vazia, mas havia dados antigos
+                message = `Nenhum quadrinho encontrado. ${comicsRemoved} itens removidos da estante.`;
+            }
+
+            statusMessage.textContent = message;
+        }
+
+        /**
+         * Extrai o primeiro arquivo de imagem de um arquivo CBZ (ZIP)
+         * e retorna seu Data URL.
+         * @param {File} file
+         * @returns {Promise<string>} Data URL da capa
+         */
+        async function extractCover(file) {
+            const zip = await JSZip.loadAsync(file);
+            let firstImageFile = null;
+
+            // Encontra a primeira imagem (ou a imagem com o menor índice/ordem alfabética)
+            zip.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir && /\.(jpe?g|png|gif|webp)$/i.test(relativePath)) {
+                    if (!firstImageFile || relativePath.localeCompare(firstImageFile.name) < 0) {
+                        firstImageFile = { name: relativePath, entry: zipEntry };
+                    }
+                }
+            });
+
+            if (firstImageFile) {
+                const imgBlob = await firstImageFile.entry.async("blob");
+                // Converte Blob para Data URL
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(imgBlob);
+                });
+            } else {
+                throw new Error("Nenhuma imagem encontrada no CBZ.");
+            }
+        }
+
+        /**
+         * Descompacta todas as páginas do CBZ e as armazena em 'currentComic'.
+         * @param {File} file
+         */
+        async function loadComicPages(file) {
+            currentComic = [];
+            // REMOVIDO: currentPageIndex = 0; 
+            statusMessage.textContent = `Carregando ${file.name}... Aguarde.`;
+
+            const zip = await JSZip.loadAsync(file);
+            let imageFiles = [];
+
+            zip.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir && /\.(jpe?g|png|gif|webp)$/i.test(relativePath)) {
+                    imageFiles.push({ name: relativePath, entry: zipEntry });
+                }
+            });
+
+            // Ordena as páginas alfabeticamente (que é a ordem correta do quadrinho)
+            imageFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Converte cada imagem para um URL de Objeto para evitar problemas de memória com Data URLs grandes
+            for (const { entry } of imageFiles) {
+                const imgBlob = await entry.async("blob");
+                const objectUrl = URL.createObjectURL(imgBlob);
+                currentComic.push(objectUrl);
+            }
+
+            statusMessage.textContent = '';
+        }
+
+        /**************************************************
+         * 3. Funções de UI
+         **************************************************/
+
+        /**
+         * Renderiza a estante de quadrinhos com base nos metadados no IndexedDB.
+         */
+        async function renderShelf() {
+            comicShelf.innerHTML = '';
+            const metadataList = await getComicMetadata();
+
+            if (metadataList.length === 0 && dirHandle) {
+                 statusMessage.textContent = `Nenhum arquivo .cbz encontrado em ${dirHandle.name}.`;
+                 return;
+            }
+
+            metadataList.forEach(metadata => {
+                const card = document.createElement('div');
+                card.className = 'comic-card bg-white rounded-lg shadow-lg overflow-hidden flex flex-col justify-end';
+                card.dataset.path = metadata.path;
+
+                // REMOVIDA A TAG <p> QUE EXIBIA metadata.name
+                card.innerHTML = `
+                    <div class="flex-grow flex items-center justify-center p-2">
+                        <img src="${metadata.coverUrl || 'https://placehold.co/300x450/cccccc/333333?text=Sem+Capa'}" 
+                             onerror="this.onerror=null; this.src='https://placehold.co/300x450/cccccc/333333?text=Erro+Capa';"
+                             alt="Capa do Quadrinho: ${metadata.name}" 
+                             class="w-full h-full object-cover rounded-md shadow-md">
+                    </div>
+                `;
+                
+                // Adiciona o evento de clique para abrir o leitor
+                card.addEventListener('click', () => openReader(metadata));
+                comicShelf.appendChild(card);
+            });
+
+            if (metadataList.length > 0) {
+                 // Limpa a mensagem de status se a estante estiver cheia (mantendo as mensagens da varredura)
+            }
+        }
+
+        /**
+         * Abre o modal do leitor e carrega o quadrinho selecionado.
+         * @param {Object} metadata
+         */
+        async function openReader(metadata) {
+            comicFileHandle = metadata.handle;
+            
+            // Revalida a permissão (necessário após fechar o navegador)
+            const permission = await comicFileHandle.queryPermission({ mode: 'read' });
+            if (permission !== 'granted') {
+                const newPermission = await comicFileHandle.requestPermission({ mode: 'read' });
+                if (newPermission !== 'granted') {
+                    statusMessage.textContent = 'Permissão de leitura negada pelo usuário.';
+                    return;
+                }
+            }
+
+            try {
+                const file = await comicFileHandle.getFile();
+                
+                // CORREÇÃO DE BUG: Zera o índice da página explicitamente antes de carregar
+                // para garantir que a leitura sempre comece da capa (Página 0).
+                currentPageIndex = 0; 
+                
+                await loadComicPages(file);
+                
+                if (currentComic.length > 0) {
+                    readerModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    // Chama updateReaderView com o índice já zerado
+                    updateReaderView(currentPageIndex); 
+                } else {
+                    console.error('O arquivo não contém páginas de imagem válidas.');
+                    statusMessage.textContent = 'Erro: O arquivo não contém páginas de imagem válidas.';
+                }
+            } catch (error) {
+                console.error("Erro ao abrir quadrinho:", error);
+                statusMessage.textContent = `Erro ao abrir ${metadata.name}: ${error.message}`;
+            }
+        }
+
+        /**
+         * Atualiza a imagem e o contador no leitor.
+         * @param {number} newIndex
+         */
+        function updateReaderView(newIndex) {
+            if (!currentComic || currentComic.length === 0) return;
+
+            currentPageIndex = Math.min(Math.max(0, newIndex), currentComic.length - 1);
+
+            // Carrega a nova página
+            comicPage.src = currentComic[currentPageIndex];
+            pageCounter.textContent = `Página ${currentPageIndex + 1} / ${currentComic.length}`;
+            
+            // Pré-carrega a próxima página (se houver)
+            if (currentPageIndex + 1 < currentComic.length) {
+                const nextUrl = currentComic[currentPageIndex + 1];
+                const img = new Image();
+                img.src = nextUrl;
+            }
+        }
+
+        /**************************************************
+         * 4. Inicialização e Event Listeners
+         **************************************************/
+
+        // ----------------- Listeners da Estante -----------------
+        openFolderBtn.addEventListener('click', openComicFolder);
+
+        // ----------------- Listeners do Leitor -----------------
+
+        closeReaderBtn.addEventListener('click', () => {
+            readerModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            
+            // Libera a memória de todas as páginas ao fechar o leitor
+            if (currentComic) {
+                currentComic.forEach(url => URL.revokeObjectURL(url));
+                currentComic = null;
+            }
+        });
+
+        // Navegação por Botões (Top Bar)
+        nextPageBtn.addEventListener('click', () => updateReaderView(currentPageIndex + 1));
+
+        // Navegação por Botões (Mobile Footer)
+        prevPageBtn.addEventListener('click', () => updateReaderView(currentPageIndex - 1));
+        nextPageBtnMobile.addEventListener('click', () => updateReaderView(currentPageIndex + 1));
+        
+        // Navegação por Clique na Imagem
+        comicPage.addEventListener('click', () => updateReaderView(currentPageIndex + 1));
+
+        // Navegação por Teclado
+        document.addEventListener('keydown', (event) => {
+            if (readerModal.classList.contains('hidden')) return;
+
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                updateReaderView(currentPageIndex + 1);
+            } else if (event.key === 'ArrowLeft') {
+                updateReaderView(currentPageIndex - 1);
+            } else if (event.key === 'Escape') {
+                closeReaderBtn.click();
+            }
+        });
+
+        // ----------------- Inicialização -----------------
+
+        /**
+         * Inicializa o aplicativo: tenta carregar a estante de metadados.
+         */
+        async function initApp() {
+            // Configuração Firebase omitida conforme instrução.
+            
+            // Renderiza a estante se houver metadados salvos
+            const metadataList = await getComicMetadata();
+            if (metadataList.length > 0) {
+                statusMessage.textContent = `Carregando estante com ${metadataList.length} quadrinhos salvos...`;
+                renderShelf();
+            }
+        }
+
+        initApp();
+
+    </script>
+</body>
+</html>
